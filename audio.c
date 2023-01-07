@@ -8,8 +8,6 @@
 #include "hardware/sync.h"
 #include "hardware/clocks.h"
 
-#include "audio.h"
-
 #define REPETITION_RATE 4
 
 static uint32_t single_sample = 0;
