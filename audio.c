@@ -1,12 +1,12 @@
 #include <string.h>
 #include <stdio.h>
-
 #include "pico/stdlib.h"
 #include "hardware/dma.h"
 #include "hardware/irq.h"
 #include "hardware/pwm.h"
 #include "hardware/sync.h"
 #include "hardware/clocks.h"
+#include "audio.h"
 
 #define REPETITION_RATE 4
 
