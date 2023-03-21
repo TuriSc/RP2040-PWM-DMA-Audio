@@ -11,5 +11,7 @@ if (NOT TARGET pwm_dma_audio)
 
     target_link_libraries(pwm_dma_audio INTERFACE
         pico_stdlib
+        hardware_dma
+        hardware_pwm
     )
 endif()
