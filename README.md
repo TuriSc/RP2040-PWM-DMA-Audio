@@ -6,3 +6,7 @@ It is a fork of Ricardo Massaro's
 by [Greg Chadwick](https://gregchadwick.co.uk/blog/playing-with-the-pico-pt3/).
 
 Please refer to the original code for examples of use.
+
+
+### Projects using this library
+- [Dodepan](https://github.com/TuriSc/Dodepan)
