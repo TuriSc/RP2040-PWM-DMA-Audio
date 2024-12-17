@@ -1,3 +1,8 @@
+/**
+ * @file audio.c
+ * @brief Audio processing module
+ */
+
 #include <string.h>
 #include <stdio.h>
 #include "pico/stdlib.h"
@@ -8,29 +13,123 @@
 #include "hardware/clocks.h"
 #include "audio.h"
 
+/**
+ * @def REPETITION_RATE
+ * @brief Sample repetition rate
+ */
 #define REPETITION_RATE 4
 
+/**
+ * @var single_sample
+ * @brief Single sample value
+ */
 static uint32_t single_sample = 0;
-static uint32_t *single_sample_ptr = &single_sample;
-static int pwm_dma_chan, trigger_dma_chan, sample_dma_chan;
 
+/**
+ * @var single_sample_ptr
+ * @brief Pointer to single sample value
+ */
+static uint32_t *single_sample_ptr = &single_sample;
+
+/**
+ * @var pwm_dma_chan
+ * @brief PWM DMA channel
+ */
+static int pwm_dma_chan;
+
+/**
+ * @var trigger_dma_chan
+ * @brief Trigger DMA channel
+ */
+static int trigger_dma_chan;
+
+/**
+ * @var sample_dma_chan
+ * @brief Sample DMA channel
+ */
+static int sample_dma_chan;
+
+/**
+ * @var audio_buffers
+ * @brief Audio buffers
+ */
 static uint8_t audio_buffers[2][AUDIO_BUFFER_SIZE];
+
+/**
+ * @var cur_audio_buffer
+ * @brief Current audio buffer index
+ */
 static volatile int cur_audio_buffer;
+
+/**
+ * @var last_audio_buffer
+ * @brief Last audio buffer index
+ */
 static volatile int last_audio_buffer;
 
+/**
+ * @struct MIXER_SOURCE
+ * @brief Mixer source structure
+ */
 struct MIXER_SOURCE {
+  /**
+   * @var samples
+   * @brief Sample data
+   */
   const unsigned char *samples;
+
+  /**
+   * @var len
+   * @brief Sample length
+   */
   int len;
+
+  /**
+   * @var loop_start
+   * @brief Loop start index
+   */
   int loop_start;
+
+  /**
+   * @var pos
+   * @brief Current position
+   */
   int pos;
+
+  /**
+   * @var active
+   * @brief Source active flag
+   */
   bool active;
+
+  /**
+   * @var loop
+   * @brief Loop flag
+   */
   bool loop;
-  uint16_t volume; // 8.8 fixed point
+
+  /**
+   * @var volume
+   * @brief Volume value (8.8 fixed point)
+   */
+  uint16_t volume;
 };
 
+/**
+ * @var mixer_sources
+ * @brief Mixer sources array
+ */
 static struct MIXER_SOURCE mixer_sources[AUDIO_MAX_SOURCES];
+
+/**
+ * @var mixer_buffer
+ * @brief Mixer buffer
+ */
 static int16_t mixer_buffer[AUDIO_BUFFER_SIZE];
 
+/**
+ * @brief DMA handler function
+ */
 static void __isr __time_critical_func(dma_handler)()
 {
   cur_audio_buffer = 1 - cur_audio_buffer;
@@ -40,6 +139,11 @@ static void __isr __time_critical_func(dma_handler)()
   dma_hw->ints1 = 1u << trigger_dma_chan;
 }
 
+/**
+ * @brief Initialize audio module
+ * @param audio_pin Audio pin number
+ * @param sample_freq Sample frequency
+ */
 void audio_init(int audio_pin, int sample_freq)
 {
   gpio_set_function(audio_pin, GPIO_FUNC_PWM);
@@ -104,7 +208,6 @@ void audio_init(int audio_pin, int sample_freq)
                         false                                      // don't start yet
                         );
 
-
   // clear audio buffers
   memset(audio_buffers[0], 128, AUDIO_BUFFER_SIZE);
   memset(audio_buffers[1], 128, AUDIO_BUFFER_SIZE);
@@ -113,6 +216,10 @@ void audio_init(int audio_pin, int sample_freq)
   dma_channel_start(trigger_dma_chan);
 }
 
+/**
+ * @brief Get audio buffer
+ * @return Audio buffer pointer or NULL if not available
+ */
 uint8_t *audio_get_buffer(void)
 {
   if (last_audio_buffer == cur_audio_buffer) {
@@ -124,6 +231,10 @@ uint8_t *audio_get_buffer(void)
   return buf;
 }
 
+/**
+ * @brief Claim an unused audio source
+ * @return Index of the claimed source or -1 if none available
+ */
 static int audio_claim_unused_source(void)
 {
   for (int i = 0; i < AUDIO_MAX_SOURCES; i++) {
@@ -135,6 +246,12 @@ static int audio_claim_unused_source(void)
   return -1;
 }
 
+/**
+ * @brief Play a single audio sample
+ * @param samples Sample data
+ * @param len Sample length
+ * @return Index of the played source or -1 if none available
+ */
 int audio_play_once(const uint8_t *samples, int len)
 {
   int source_id = audio_claim_unused_source();
@@ -150,6 +267,13 @@ int audio_play_once(const uint8_t *samples, int len)
   return source_id;
 }
 
+/**
+ * @brief Play a looping audio sample
+ * @param samples Sample data
+ * @param len Sample length
+ * @param loop_start Loop start index
+ * @return Index of the played source or -1 if none available
+ */
 int audio_play_loop(const uint8_t *samples, int len, int loop_start)
 {
   int source_id = audio_play_once(samples, len);
@@ -162,16 +286,28 @@ int audio_play_loop(const uint8_t *samples, int len, int loop_start)
   return source_id;
 }
 
+/**
+ * @brief Stop an audio source
+ * @param source_id Index of the source to stop
+ */
 void audio_source_stop(int source_id)
 {
   mixer_sources[source_id].active = false;
 }
 
+/**
+ * @brief Set the volume of an audio source
+ * @param source_id Index of the source to set volume for
+ * @param volume Volume value (8.8 fixed point)
+ */
 void audio_source_set_volume(int source_id, uint16_t volume)
 {
   mixer_sources[source_id].volume = volume;
 }
 
+/**
+ * @brief Perform a single step of the audio mixer
+ */
 void audio_mixer_step(void)
 {
   uint8_t *audio_buffer = audio_get_buffer();
@@ -217,3 +353,4 @@ void audio_mixer_step(void)
     }
   }
 }
+
